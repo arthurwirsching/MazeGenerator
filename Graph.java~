@@ -1,0 +1,396 @@
+//Arthur Wirsching
+import javax.swing.*;
+import java.awt.Graphics;
+import java.awt.Color;
+import java.util.Random;
+
+public class Graph extends JFrame
+{
+   
+   private SinglyLinkedList[] AdjList;
+   private SinglyLinkedList[] AdjList2;//Used for creating grid.
+   private SinglyLinkedList edges = new SinglyLinkedList(); //Used to track DFS path for painting;
+   private boolean[] visited;
+   private int size;
+   public Graph(int size)
+   {
+      super("Maze");
+      setSize(800,810);
+      setVisible(true);
+      setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+      AdjList = new SinglyLinkedList[size*size];
+      AdjList2 = new SinglyLinkedList[(size+1)*(size+1)];
+      visited = new boolean[size*size];
+      for (int i=0;i<AdjList.length;i++)
+      {
+         AdjList[i]=new SinglyLinkedList();
+      }
+      for (int i=0;i<AdjList2.length;i++)
+      {
+         AdjList2[i]=new SinglyLinkedList();
+      }
+      this.size=size;
+   }
+   public void addEdge(int a, int b) //Connects a to b, and keeps the edges in order.
+   {
+      int[] L = new int[(AdjList[a].Length())+1];
+      int[] K = AdjList[a].getArray();
+      L[L.length-1]=b;
+      for(int i=0;i<L.length-1;i++)
+      {
+         L[i]=K[i];
+      }
+      //insertionSort(L);
+      shuffleArray(L);
+      
+      SinglyLinkedList V = new SinglyLinkedList();
+      for(int i=0;i<L.length;i++)
+      {
+         V.Insert(L[i]);
+      }
+      AdjList[a]=V;
+   }
+   public void addEdge2(int a, int b) //For visual graph
+   {
+      int[] L = new int[(AdjList2[a].Length())+1];
+      int[] K = AdjList2[a].getArray();
+      L[L.length-1]=b;
+      for(int i=0;i<L.length-1;i++)
+      {
+         L[i]=K[i];
+      }
+      insertionSort(L);
+      
+      SinglyLinkedList V = new SinglyLinkedList();
+      for(int i=0;i<L.length;i++)
+      {
+         V.Insert(L[i]);
+      }
+      AdjList2[a]=V;
+   }
+   public void DFS() //Performs a Depth First Search on the graph.
+   {
+      for(int i=0;i<visited.length;i++)
+      {
+         visited[i]=false;
+      }
+      System.out.println("    ----DFS----");
+      SinglyLinkedList start = new SinglyLinkedList(); //List to record start times.
+      SinglyLinkedList end = new SinglyLinkedList(); //List to record end times.
+      Stack S = new Stack();
+      Node i;
+      Node j;
+      //int disc=0;
+      //System.out.println("Visited Order:");
+      for(int a=0;a<AdjList.length;a++)
+      {
+         if (visited[a]==false)
+         {
+           // disc++; //Will keep track of disconnected graphs.
+            //System.out.print("Graph #" + disc + ": " );
+            S.push(a); //0 or A is our starting point.
+            visited[a]=true;
+            //System.out.print(a);
+            
+            while(S.isEmpty()==false)
+            {
+               i=AdjList[S.peek().getNumber()].getHead();
+               j=getNextUnvisited(i);
+               if(i!=null && visited[i.getNumber()]==false) //Ensures we dont skip over the first node in a list.
+                  j=i;
+               if(j!=null && visited[j.getNumber()]==false)
+               {
+                  //System.out.print(j.getNumber()); //Prints as value is visited
+                  visited[j.getNumber()]=true; // Marks value visited
+                  start.Insert(j.getNumber()); //Records start order
+                  edges.addTail(new Edge(S.peek().getNumber(),j.getNumber()));
+                  S.push(j.getNumber()); //Pushes onto the stack
+               }
+               else
+               {
+                  end.Insert(S.peek().getNumber()); //Records end order
+                  S.pop(); //Pops the top value from the stack
+               }
+            }
+            System.out.println("");
+         }
+      }
+     /* //Last part outputs Topological Sort using endtime ArrayList
+      int[] endtime = end.getArray();
+      int [] topological = reverseArray(endtime);
+      System.out.print("\nTopological: ");
+      for (int a=0;a<endtime.length;a++)
+         System.out.print(topological[a]);  */
+   }
+   
+   
+   public Queue shortestPath(int destination) //uses Disktra's Algorithim
+   {
+      boolean[] seen = new boolean[visited.length];
+      int currentWeight=0;
+      Queue q = new Queue();
+      Queue path = new Queue();
+      Node N = AdjList[0].getHead(); //Start point at 0
+      while(N!=null)
+      {
+         q.enqueue(new Edge(N.getNumber(),1,0));
+         seen[N.getNumber()]=true;
+         N=N.getNext();
+      }
+      visited[0]=true;
+      seen[0]=true;
+      while(q.isEmpty()==false)
+      {
+         path.enqueue(q.getHead().getEdge());
+         currentWeight=q.getHead().getEdge().getB();
+         int current=q.getHead().getEdge().getA();
+         q.dequeue();
+         
+        /* if(current==destination)
+         {
+            path.printList();
+            return path;
+         }*/
+         if(visited[current]==false)
+         {
+            N=AdjList[current].getHead();
+            while(N!=null)
+            {
+               if(seen[N.getNumber()]==false)
+                  {
+                     seen[N.getNumber()]=true;
+                     q.enqueue(new Edge(N.getNumber(),1+currentWeight,current));
+                  }
+               else if (seen[N.getNumber()] && (1+currentWeight)<q.getWeight(N.getNumber()))
+                  {
+                     q.updateEdge(N.getNumber(),(1+currentWeight),current);
+                  }
+               N=N.getNext();
+            }
+            visited[current]=true;
+         }
+         
+      }
+      //path.printList();
+      //System.out.println("Total Weight: "+ currentWeight);
+      System.out.println("Destination Not Found");
+      path.printList();
+      return path;
+   }
+   
+/*
+   private int[] reverseArray(int[] a)
+   {
+      int[] b = new int[a.length];
+      int j=0;
+      for(int i=a.length-1;i>=0;i--)
+      {
+         b[j]=a[i];
+         j++;
+      }
+      return b;
+   }
+*/
+   public void printGraph()
+   {
+      System.out.println("    ----Graph----");
+      for(int i=0;i<AdjList.length;i++)
+      {
+         System.out.print(i + ": ");
+         AdjList[i].printList();
+         System.out.println();
+      }
+   }
+   public void insertionSort(int[] a) //Insertion Sort
+   {
+      int temp;
+      int n;
+      for(int i=1;i<a.length;i++)
+      {
+         temp =a[i];
+         for(n=i-1;(n>=0) && (a[n]>temp);n--)
+         {
+            a[n+1]=a[n];
+         }
+         a[n+1]=temp;
+      }
+   }
+   
+   public void shuffleArray(int[] a)
+   {
+    Random rand = new Random();
+      for(int i=0;i<a.length;i++)
+      {
+         int r = rand.nextInt(a.length);
+         int j= a[i];
+         a[i]=a[r];
+         a[r]=j;
+      }
+   }
+   public void createGrid(int size)
+   {
+      //Point Right Edges
+      for(int i=0;i<size;i++)
+      {
+         int k=i*size;
+         for(int j=0;j<size-1;j++)
+         {
+            addEdge(k+j,k+j+1);
+         }
+      }
+      //Point Left Edges
+      for(int i=0;i<size;i++)
+      {
+         int k=i*size;
+         for(int j=1;j<size;j++)
+         {
+            addEdge(k+j,k+j-1);
+         }
+      }
+      //Point Down Edges
+      for(int i=0;i<size-1;i++)
+      {
+         int k=i*size;
+         for(int j=0;j<size;j++)
+         {
+            addEdge(k+j,k+j+size);
+         }
+      }
+      //Point Up Edges
+      for(int i=1;i<size;i++)
+      {
+         int k=i*size;
+         for(int j=0;j<size;j++)
+         {
+            addEdge(k+j,k+j-size);
+         }
+      }
+      createVisualGrid(size+1);
+   }
+    public void createVisualGrid(int size)
+   {
+      //Point Right Edges
+      for(int i=0;i<size;i++)
+      {
+         int k=i*size;
+         for(int j=0;j<size-1;j++)
+         {
+            addEdge2(k+j,k+j+1);
+         }
+      }
+      //Point Left Edges
+      for(int i=0;i<size;i++)
+      {
+         int k=i*size;
+         for(int j=1;j<size;j++)
+         {
+            addEdge2(k+j,k+j-1);
+         }
+      }
+      //Point Down Edges
+      for(int i=0;i<size-1;i++)
+      {
+         int k=i*size;
+         for(int j=0;j<size;j++)
+         {
+            addEdge2(k+j,k+j+size);
+         }
+      }
+      //Point Up Edges
+      for(int i=1;i<size;i++)
+      {
+         int k=i*size;
+         for(int j=0;j<size;j++)
+         {
+            addEdge2(k+j,k+j-size);
+         }
+      }
+   }
+   private Node getNextUnvisited(Node i)
+   {
+      Node j=i;
+      boolean v=true;
+      if(j==null)
+         v=false;
+      while(v)
+      {
+         j=j.getNext();
+         if(j==null)
+         {
+            v=false;
+         }
+         else if (visited[j.getNumber()]==false)
+         {
+            v=false;
+         }
+      }
+      return j;
+   }
+   public void paint(Graphics g)
+   {
+      int j=-1;
+      for(int i=0;i<AdjList2.length;i++)
+      {
+         if((i%(size+1))==0)
+            j++;
+         Node N = AdjList2[i].getHead();
+         while(N!=null)
+         {
+            int difference = (i-(N.getNumber()));
+            if(difference==(1))
+            {
+               g.fillRect(((N.getNumber()%(size+1))*15)+20,(j*15)+40,15,5);
+            }
+             if(difference==(-1))
+            {
+               g.fillRect(((N.getNumber()%(size+1))*15)+5,(j*15)+40,15,5);
+            }
+             if(difference==((size+1)))
+            {
+               g.fillRect(((N.getNumber()%(size+1))*15)+20,(j*15)+25,5,15);
+            }
+             if(difference==(-(size+1)))
+            {
+               g.fillRect(((N.getNumber()%(size+1))*15)+20,(j*15)+40,5,15);
+            }
+            N=N.getNext();
+         }
+      }
+      g.setColor(Color.white);   
+      g.fillRect(20,45,5,10); //entry
+      Node E = edges.getHead();
+      while(E!=null)
+      {
+         int difference = E.getEdge().getA() - E.getEdge().getB();
+         /// Delay
+         try {
+            Thread.sleep(10);
+         } catch(InterruptedException ex) {
+            Thread.currentThread().interrupt();
+         }
+         ///
+         if(difference==(1))
+         {
+            g.fillRect(((E.getEdge().getA()%size)*15)+20,(((E.getEdge().getA()/size))*15)+45,5,10);
+         }
+         if(difference==(-1))
+         {
+            g.fillRect(((E.getEdge().getA()%size)*15)+35,(((E.getEdge().getA()/size))*15)+45,5,10);
+         }
+         if(difference==((size)))
+         {
+            g.fillRect(((E.getEdge().getA()%size)*15)+25,(((E.getEdge().getA()/size))*15)+40,10,5);
+         }
+         if(difference==(-(size)))
+         {
+            g.fillRect(((E.getEdge().getA()%size)*15)+25,(((E.getEdge().getA()/size))*15)+55,10,5);
+         }
+         E=E.getNext();
+      }
+   }
+   public SinglyLinkedList[] getAdjlist()
+   {
+      return AdjList;
+   }
+   
+}
